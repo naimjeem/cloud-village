@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3a5b8c"/>
+      <stop offset="1" stop-color="#7a8eb0"/>
+    </linearGradient>
+    <linearGradient id="grass" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#5e8949"/>
+      <stop offset="1" stop-color="#3a5b32"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="12" fill="url(#sky)"/>
+  <!-- ground -->
+  <path d="M0 42 Q32 30 64 42 L64 64 L0 64 Z" fill="url(#grass)"/>
+  <!-- left house -->
+  <rect x="10" y="36" width="14" height="12" fill="#d97757"/>
+  <polygon points="8,36 26,36 17,28" fill="#7a2e22"/>
+  <rect x="14" y="40" width="3" height="4" fill="#ffe7a0"/>
+  <rect x="19" y="40" width="3" height="4" fill="#ffe7a0"/>
+  <!-- center vault -->
+  <ellipse cx="32" cy="42" rx="9" ry="2.5" fill="#7b6cf6"/>
+  <ellipse cx="32" cy="38" rx="7" ry="2" fill="#9085ff"/>
+  <ellipse cx="32" cy="35" rx="5" ry="1.6" fill="#a89fff"/>
+  <circle cx="32" cy="32" r="1.6" fill="#cfc8ff"/>
+  <!-- right tower -->
+  <rect x="46" y="30" width="6" height="18" fill="#9aa0a6"/>
+  <polygon points="44,30 54,30 49,24" fill="#444"/>
+  <circle cx="49" cy="22" r="1.6" fill="#ffe6a0"/>
+  <!-- sun -->
+  <circle cx="14" cy="14" r="4" fill="#ffd980"/>
+</svg>

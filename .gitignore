@@ -1,0 +1,32 @@
+# dependencies
+node_modules/
+
+# build output
+dist/
+.vite/
+
+# editor / OS
+.DS_Store
+.idea/
+.vscode/
+
+# logs
+*.log
+
+# env / secrets
+.env
+.env.*
+!.env.example
+
+# go backend
+backend/cloud-village-backend
+backend/*.test
+backend/*.out
+
+# local creds export
+.aws/
+*.pem
+*.key
+
+# demo capture intermediates (keep final mp4/gif/png in docs/)
+docs/captures/

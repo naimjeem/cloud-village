@@ -1,0 +1,28 @@
+{
+  "name": "Example E-Commerce",
+  "components": [
+    { "id": "user",   "name": "Customer",      "kind": "external",   "provider": "generic", "position": [-16, -8], "health": "healthy" },
+    { "id": "cf",     "name": "CloudFront",    "kind": "cdn",        "provider": "aws",     "position": [-8, -4],  "health": "healthy" },
+    { "id": "alb",    "name": "ALB",           "kind": "gateway",    "provider": "aws",     "position": [0, -2],   "health": "healthy" },
+    { "id": "cog",    "name": "Cognito",       "kind": "auth",       "provider": "aws",     "position": [0, 6],    "health": "healthy" },
+    { "id": "ecs",    "name": "ECS Service",   "kind": "compute",    "provider": "aws",     "position": [8, -2],   "health": "healthy" },
+    { "id": "rds",    "name": "Aurora",        "kind": "database",   "provider": "aws",     "position": [16, -6],  "health": "healthy" },
+    { "id": "s3",     "name": "S3",            "kind": "storage",    "provider": "aws",     "position": [-8, 6],   "health": "healthy" },
+    { "id": "sqs",    "name": "Order Queue",   "kind": "queue",      "provider": "aws",     "position": [12, 4],   "health": "healthy" },
+    { "id": "lam",    "name": "Order Lambda",  "kind": "compute",    "provider": "aws",     "position": [20, 4],   "health": "healthy" },
+    { "id": "cw",     "name": "CloudWatch",    "kind": "monitoring", "provider": "aws",     "position": [22, -4],  "health": "healthy" }
+  ],
+  "connections": [
+    { "id": "e1", "from": "user", "to": "cf",  "protocol": "http" },
+    { "id": "e2", "from": "cf",   "to": "s3",  "protocol": "http" },
+    { "id": "e3", "from": "cf",   "to": "alb", "protocol": "http" },
+    { "id": "e4", "from": "alb",  "to": "cog", "protocol": "http" },
+    { "id": "e5", "from": "alb",  "to": "ecs", "protocol": "http" },
+    { "id": "e6", "from": "ecs",  "to": "rds", "protocol": "sql" },
+    { "id": "e7", "from": "ecs",  "to": "sqs", "protocol": "event" },
+    { "id": "e8", "from": "sqs",  "to": "lam", "protocol": "event" },
+    { "id": "e9", "from": "lam",  "to": "rds", "protocol": "sql" },
+    { "id": "e10","from": "ecs",  "to": "cw",  "protocol": "http" },
+    { "id": "e11","from": "lam",  "to": "cw",  "protocol": "http" }
+  ]
+}

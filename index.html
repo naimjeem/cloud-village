@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cloud Village — Interactive 3D Cloud Architecture Map</title>
+    <meta
+      name="description"
+      content="Cloud Village renders your cloud architecture as a 3D village. Live-scan AWS, Cloudflare, Azure, GCP, or Docker. Watch traffic flow as particles, alerts pulse buildings, day-night cycle, soft shadows, bloom."
+    />
+    <meta name="theme-color" content="#0b1220" />
+    <meta name="author" content="Naimuddin Shahjalal Bhuyan" />
+
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/cloud-village-icon.png" />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Cloud Village" />
+    <meta property="og:description" content="Interactive 3D cloud architecture map. AWS / Cloudflare / Azure / GCP / Docker live-scan, animated traffic, day-night cycle." />
+    <meta property="og:image" content="/cloud-village-og.png" />
+    <meta property="og:site_name" content="Cloud Village" />
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Cloud Village" />
+    <meta name="twitter:description" content="Interactive 3D cloud architecture map." />
+    <meta name="twitter:image" content="/cloud-village-og.png" />
+
+    <style>
+      html, body, #root { height: 100%; margin: 0; padding: 0; }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        background: #0b1220;
+        color: #e6edf3;
+        overflow: hidden;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
