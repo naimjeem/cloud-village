@@ -6,7 +6,7 @@
 ![license](https://img.shields.io/badge/license-MIT-blue)
 ![stack](https://img.shields.io/badge/stack-React%20%2B%20three.js%20%2B%20Go-1f6feb)
 
-![Cloud Village intro](docs/cloud-village-intro.gif)
+![Cloud Village intro](docs/cloud-village.png)
 
 > 📽 [Full 1080p MP4](docs/cloud-village-intro.mp4) · [Static poster](docs/cloud-village.png)
 
