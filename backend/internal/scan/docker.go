@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"regexp"
+	"sort"
 	"strings"
 
 	"github.com/docker/docker/api/types/container"
@@ -17,6 +18,20 @@ import (
 type DockerArgs struct {
 	SocketPath string
 }
+
+// DockerScanCache holds the per-component-id mapping from the last successful
+// Docker scan so the metrics layer can reproduce stable component / connection
+// IDs without re-running the full scan.
+type DockerScanCache struct {
+	SocketPath          string
+	ComponentIDByCtrID  map[string]string // docker container ID → village component ID
+	NetworksByComponent map[string][]string // network name → component IDs in that network
+	ConnectionIDByPair  map[string]string // "fromID->toID" → connection ID
+}
+
+var lastDockerScan *DockerScanCache
+
+func GetDockerCache() *DockerScanCache { return lastDockerScan }
 
 var (
 	reDatabase   = regexp.MustCompile(`postgres|mysql|mariadb|mongo|cockroach|cassandra|clickhouse`)
@@ -67,6 +82,16 @@ func Docker(ctx context.Context, args DockerArgs) (*village.Config, error) {
 	if err != nil {
 		return nil, fmt.Errorf("Cannot connect to Docker socket. Is Docker running? (%w)", err)
 	}
+	sort.SliceStable(containers, func(i, j int) bool {
+		ni, nj := containers[i].ID, containers[j].ID
+		if len(containers[i].Names) > 0 {
+			ni = containers[i].Names[0]
+		}
+		if len(containers[j].Names) > 0 {
+			nj = containers[j].Names[0]
+		}
+		return ni < nj
+	})
 
 	var components []village.Component
 	ids := NewIDMaker()
@@ -92,6 +117,7 @@ func Docker(ctx context.Context, args DockerArgs) (*village.Config, error) {
 	// Containers
 	networkContainers := map[string][]string{}
 	ctrIDByName := map[string]string{}
+	componentIDByCtrID := map[string]string{}
 	for _, c := range containers {
 		name := c.ID
 		if len(c.Names) > 0 {
@@ -99,6 +125,7 @@ func Docker(ctx context.Context, args DockerArgs) (*village.Config, error) {
 		}
 		id := ids.Make("ctr_"+name, 60)
 		ctrIDByName[name] = id
+		componentIDByCtrID[c.ID] = id
 		kind := inferDockerKind(c.Image, name)
 		health := village.HealthDegraded
 		switch c.State {
@@ -134,16 +161,29 @@ func Docker(ctx context.Context, args DockerArgs) (*village.Config, error) {
 
 	var connections []village.Connection
 	cn := 0
-	for net, list := range networkContainers {
+	connectionIDByPair := map[string]string{}
+	networksByComponent := map[string][]string{}
+	netNames := make([]string, 0, len(networkContainers))
+	for n := range networkContainers {
+		netNames = append(netNames, n)
+	}
+	sort.Strings(netNames)
+	for _, net := range netNames {
 		if net == "bridge" || net == "host" || net == "none" {
 			continue
 		}
+		list := append([]string(nil), networkContainers[net]...)
+		sort.Strings(list)
+		networksByComponent[net] = list
 		for i := 0; i < len(list); i++ {
 			for j := i + 1; j < len(list); j++ {
 				cn++
+				cid := fmt.Sprintf("dn%d", cn)
 				connections = append(connections, village.Connection{
-					ID: fmt.Sprintf("dn%d", cn), From: list[i], To: list[j], Protocol: "tcp", Label: net,
+					ID: cid, From: list[i], To: list[j], Protocol: "tcp", Label: net,
 				})
+				connectionIDByPair[list[i]+"->"+list[j]] = cid
+				connectionIDByPair[list[j]+"->"+list[i]] = cid
 			}
 		}
 	}
@@ -170,6 +210,13 @@ func Docker(ctx context.Context, args DockerArgs) (*village.Config, error) {
 				})
 			}
 		}
+	}
+
+	lastDockerScan = &DockerScanCache{
+		SocketPath:          socket,
+		ComponentIDByCtrID:  componentIDByCtrID,
+		NetworksByComponent: networksByComponent,
+		ConnectionIDByPair:  connectionIDByPair,
 	}
 
 	return &village.Config{

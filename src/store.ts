@@ -31,8 +31,10 @@ interface State {
   lastScanProvider: 'aws' | 'cloudflare' | 'docker' | 'azure' | 'gcp' | null;
   timePhase: TimePhase;
   autoCycle: boolean; // smoothly animate phase
+  metricsPanelOpen: boolean;
 
   setLastScanProvider: (p: State['lastScanProvider']) => void;
+  toggleMetricsPanel: () => void;
   setVillage: (v: VillageConfig, persist?: boolean) => void;
   select: (id: string | null) => void;
   setSearch: (q: string) => void;
@@ -61,8 +63,10 @@ export const useStore = create<State>((set, get) => ({
   lastScanProvider: null,
   timePhase: 'day',
   autoCycle: false,
+  metricsPanelOpen: false,
 
   setLastScanProvider: (p) => set({ lastScanProvider: p }),
+  toggleMetricsPanel: () => set({ metricsPanelOpen: !get().metricsPanelOpen }),
 
   setVillage: (v, persist = true) => {
     set({ village: v, selectedId: null, alerts: [], flows: [], edgeTraffic: {} });

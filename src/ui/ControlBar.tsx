@@ -24,6 +24,8 @@ export function ControlBar() {
   const [scanning, setScanning] = useState(false);
   const [metricsOn, setMetricsOn] = useState(false);
   useMetricsPolling(metricsOn);
+  const metricsPanelOpen = useStore((s) => s.metricsPanelOpen);
+  const toggleMetricsPanel = useStore((s) => s.toggleMetricsPanel);
 
   const timePhase = useStore((s) => s.timePhase);
   const cyclePhase = useStore((s) => s.cyclePhase);
@@ -171,6 +173,7 @@ export function ControlBar() {
         <Toggle on={autoCycle} onClick={toggleAutoCycle}>⟳ Auto</Toggle>
         <Sep />
         <Toggle on={metricsOn} onClick={() => setMetricsOn(!metricsOn)}>📈 Live metrics</Toggle>
+        <Toggle on={metricsPanelOpen} onClick={toggleMetricsPanel}>📊 Panel</Toggle>
         <input ref={jsonRef} type="file" accept="application/json" style={{ display: 'none' }} onChange={onJsonFile} />
         <input ref={tfRef} type="file" accept="application/json,.tfstate" style={{ display: 'none' }} onChange={onTfFile} />
       </div>
@@ -247,7 +250,7 @@ function ScanModal({
       >
         <h3 style={{ marginTop: 0 }}>Live scan</h3>
         <p style={{ fontSize: 12, color: '#9aa0a6', marginTop: 0 }}>
-          Backend must be running (<code>cd backend &amp;&amp; go run .</code>). Uses local credentials.
+          Uses local credentials.
         </p>
         <Field label="Provider">
           <select

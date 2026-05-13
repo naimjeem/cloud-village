@@ -303,7 +303,11 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
                   style={inputStyle}
                 />
               </Field>
-              <Hint>Backend must run on same host as Docker.</Hint>
+              <Hint>
+                Backend must run on same host as Docker. <strong>📈 Live metrics</strong> after a
+                Docker scan reports per-container CPU%, network rx+tx, and run/exit state — all
+                local, no external service.
+              </Hint>
             </>
           )}
         </div>

@@ -5,6 +5,7 @@ import { AlertToasts } from './ui/AlertToasts';
 import { Legend } from './ui/Legend';
 import { SearchBar } from './ui/SearchBar';
 import { KeyboardShortcuts } from './ui/KeyboardShortcuts';
+import { MetricsPanel } from './ui/MetricsPanel';
 
 export default function App() {
   return (
@@ -13,6 +14,7 @@ export default function App() {
       <ControlBar />
       <SearchBar />
       <InspectPanel />
+      <MetricsPanel />
       <AlertToasts />
       <Legend />
       <KeyboardShortcuts />

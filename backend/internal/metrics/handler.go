@@ -8,9 +8,9 @@ import (
 )
 
 type Snapshot struct {
-	Health    map[string]string `json:"health"`
+	Health    map[string]string  `json:"health"`
 	EdgeRates map[string]float64 `json:"edgeRates"`
-	Alerts    []Alert           `json:"alerts"`
+	Alerts    []Alert            `json:"alerts"`
 }
 
 type Alert struct {
@@ -31,10 +31,20 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 
 func Handler(w http.ResponseWriter, r *http.Request) {
 	provider := strings.ToLower(r.URL.Query().Get("provider"))
-	if provider == "aws" {
+	switch provider {
+	case "aws":
 		snap, err := SnapshotAWS(r.Context())
 		if err != nil {
 			log.Printf("[metrics] aws %v", err)
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+			return
+		}
+		writeJSON(w, http.StatusOK, snap)
+		return
+	case "docker":
+		snap, err := SnapshotDocker(r.Context())
+		if err != nil {
+			log.Printf("[metrics] docker %v", err)
 			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 			return
 		}

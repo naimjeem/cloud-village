@@ -20,6 +20,7 @@
 - **Live metrics** — polls backend every 4 s for CloudWatch alarms + ALB request rates → drives health states, edge particles, deduped alerts.
 - **Animated traffic** — request / response / event particles arc along edges. Road color thickens + shifts brown → red as traffic rises, decays over time.
 - **Click-to-inspect panel** — incoming / outgoing connections, replayable flows, alert triggers, health override, metadata view.
+- **Metrics panel** — toggleable in-app dashboard (📊 Panel). Tabs: summary (counts + health distribution + top kinds), components (sortable by traffic / health / name / kind), edges (top traffic), alerts (severity-coded, click-to-focus). Provider-agnostic — reads live store state so it works for demo, AWS, Azure, GCP, Cloudflare, Docker.
 - **Settings UI** — store provider credentials (AWS keys, Cloudflare token, Azure service principal, GCP service account JSON) in browser `localStorage`. Used as scan-time overrides.
 
 ---
@@ -131,6 +132,7 @@ Components with `position: [0, 0]` (or missing) get an auto-layout slot based on
 | 🌅 / 🌞 / 🌆 / 🌙 | Cycle time-of-day phase |
 | ⟳ Auto | Auto-advance phase every 12 s |
 | 📈 Live metrics | Toggle backend metrics polling |
+| 📊 Panel | Toggle in-app metrics panel (summary / components / edges / alerts) |
 
 ### Keyboard
 
@@ -154,6 +156,23 @@ Components with `position: [0, 0]` (or missing) get an auto-layout slot based on
 
 ---
 
+## Metrics panel
+
+Open with **📊 Panel** on the toolbar. Side panel docked right; auto-shifts left when an inspect panel is open so both fit side-by-side.
+
+| Tab | Shows |
+|-----|-------|
+| Summary | Component count, connection count, active-edge count, alert count, health distribution bar (healthy / degraded / down), top kinds breakdown |
+| Components | All components in a sortable table (traffic / health / name / kind). Click a row → focuses the building and opens InspectPanel |
+| Edges | Top 20 connections by current traffic, from → to + protocol + rate |
+| Alerts | Recent alerts feed, severity-colored, timestamped. Click → focus the offending component |
+
+Panel reads directly from the live store (`village`, `alerts`, `edgeTraffic`), so it is **provider-agnostic**: works with demo data, JSON uploads, Terraform state, or any of the live scanners (AWS, Azure, GCP, Cloudflare, Docker). When 📈 Live metrics is on, numbers update every 4 s automatically.
+
+`backend/internal/metrics/docker.go` is what feeds the panel for local Docker setups: container `running`/`exited`/`dead` → health, CPU% ≥ 85 → degraded, ≥ 99 → down with critical alert, and network (rx+tx) bytes/sec scaled into edge rates. Same `Snapshot` shape as the AWS adapter, no external service required.
+
+---
+
 ## Backend
 
 Go module at `backend/` exposing a small HTTP API.
@@ -167,6 +186,7 @@ backend/internal/scan/docker.go       # Local Docker engine via docker SDK
 backend/internal/scan/azure.go        # Azure Resource Manager SDK
 backend/internal/scan/gcp.go          # GCP Cloud Asset Inventory (REST + google ADC)
 backend/internal/metrics/aws.go       # CloudWatch alarms + ALB RequestCountPerTarget
+backend/internal/metrics/docker.go    # Local Docker container CPU%, net rx/tx, run state
 backend/internal/metrics/handler.go   # /api/metrics provider switch
 ```
 
@@ -174,7 +194,18 @@ Endpoints:
 
 - `GET  /health` — `{ok: true}`
 - `POST /api/scan` — body `{ provider, ... }` → `VillageConfig`
-- `GET  /api/metrics?provider=aws` — `{ health, edgeRates, alerts }`
+- `GET  /api/metrics?provider=aws` — CloudWatch alarms + ECS health + ALB request rate
+- `GET  /api/metrics?provider=docker` — local Docker container CPU%, network rx+tx, run state (no external service)
+
+### Docker live metrics (local, zero external dependencies)
+
+After running a Docker scan, toggle **📈 Live metrics**. Each 4 s poll reads from the local Docker socket and reports:
+
+- **Health** — container `running` → healthy, `exited`/`dead` → down, else degraded. CPU ≥ 85% downgrades to degraded; ≥ 99% to down.
+- **Edge rates** — sum of (rx + tx) bytes/sec for the two endpoints of each connection, scaled into a request-rate proxy.
+- **Alerts** — high-CPU per container (`warning` ≥ 85%, `critical` ≥ 99%).
+
+All data comes from `/var/run/docker.sock`. No Prometheus, no exporter, no third-party service.
 
 ### Credential resolution
 
@@ -249,7 +280,8 @@ cloudwatch:DescribeAlarms, cloudwatch:GetMetricData
 - [x] Phase 8 — CloudWatch alarms + ALB request-rate metrics ingest
 - [x] Phase 9 — Realistic rendering pass (HDRI, bloom, soft shadows, day/night, props)
 - [x] Phase 10 — ⚙ Settings credential vault (per-provider)
-- [ ] Phase 11 — Prometheus / Datadog metrics adapters
+- [x] Phase 11 — Docker live metrics (local CPU% / network / state, no external service)
+- [ ] Phase 11b — Azure Monitor / GCP Cloud Monitoring / Cloudflare Analytics metrics adapters
 - [ ] Phase 12 — Code-split bundle (lazy-load three.js + postprocessing)
 - [ ] Phase 13 — GLTF asset kit support (Quaternius / Kenney)
 - [ ] Phase 14 — Multi-account / multi-region AWS scan in one render
