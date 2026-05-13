@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useStore } from '../store';
 import type { VillageConfig } from '../types';
 import { mockVillage } from '../data/mockVillage';
@@ -6,7 +6,9 @@ import { parseTerraformState } from '../loaders/terraform';
 import { autoLayout } from '../loaders/autoLayout';
 import { liveScan, type LiveScanRequest, type ScanProvider } from '../loaders/awsScan';
 import { useMetricsPolling } from '../hooks/useMetricsPolling';
+import { useIsCompact } from '../hooks/useIsCompact';
 import { SettingsModal, loadCreds } from './SettingsModal';
+import type { TimePhase, WeatherMode } from '../store';
 
 export function ControlBar() {
   const jsonRef = useRef<HTMLInputElement>(null);
@@ -28,6 +30,10 @@ export function ControlBar() {
   const toggleMetricsPanel = useStore((s) => s.toggleMetricsPanel);
   const viewMode = useStore((s) => s.viewMode);
   const toggleViewMode = useStore((s) => s.toggleViewMode);
+  const weatherMode = useStore((s) => s.weatherMode);
+  const setWeatherMode = useStore((s) => s.setWeatherMode);
+  const weatherAuto = useStore((s) => s.weatherAuto);
+  const toggleWeatherAuto = useStore((s) => s.toggleWeatherAuto);
 
   const timePhase = useStore((s) => s.timePhase);
   const cyclePhase = useStore((s) => s.cyclePhase);
@@ -139,44 +145,117 @@ export function ControlBar() {
     return out;
   }
 
+  const healthCounts = countHealth(village.components);
+  const compact = useIsCompact();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const showGroups = !compact || menuOpen;
+
   return (
     <>
       <div
         style={{
           position: 'absolute',
-          top: 12,
-          left: 12,
+          top: compact ? 8 : 12,
+          left: compact ? 8 : 12,
+          right: compact ? 8 : 12,
           display: 'flex',
-          gap: 6,
+          gap: compact ? 5 : 8,
+          rowGap: compact ? 6 : 8,
           alignItems: 'center',
           zIndex: 10,
-          background: 'rgba(11,18,32,0.85)',
-          padding: 8,
-          borderRadius: 8,
+          background: 'linear-gradient(180deg, rgba(15,22,42,0.92) 0%, rgba(11,18,32,0.88) 100%)',
+          padding: compact ? '5px 7px' : '6px 10px',
+          borderRadius: 12,
           border: '1px solid #1f2a44',
           flexWrap: 'wrap',
-          maxWidth: 'calc(100vw - 380px)',
+          boxShadow: '0 6px 18px rgba(0,0,0,0.3)',
+          backdropFilter: 'blur(8px)',
+          WebkitBackdropFilter: 'blur(8px)',
         }}
       >
-        <Brand villageName={village.name} count={village.components.length} />
-        <Sep />
-        <Btn onClick={simulate}>▶ Simulate</Btn>
-        <Btn onClick={randomAlert}>⚠ Alert</Btn>
-        <Btn onClick={togglePause}>{paused ? '▶ Resume' : '⏸ Pause'}</Btn>
-        <Btn onClick={() => setVillage(mockVillage)}>↺ Reset</Btn>
-        <Sep />
-        <Btn onClick={() => jsonRef.current?.click()}>📂 JSON</Btn>
-        <Btn onClick={() => tfRef.current?.click()}>🧱 tfstate</Btn>
-        <Btn onClick={() => setScanOpen(true)}>☁ Live scan</Btn>
-        <Btn onClick={() => setSettingsOpen(true)}>⚙ Settings</Btn>
-        <Btn onClick={exportFile}>⬇ Export</Btn>
-        <Sep />
-        <Btn onClick={cyclePhase}>{PHASE_ICON[timePhase]} {timePhase}</Btn>
-        <Toggle on={autoCycle} onClick={toggleAutoCycle}>⟳ Auto</Toggle>
-        <Sep />
-        <Btn onClick={toggleViewMode}>{viewMode === '3d' ? '🗺 2D view' : '🏘 3D view'}</Btn>
-        <Toggle on={metricsOn} onClick={() => setMetricsOn(!metricsOn)}>📈 Live metrics</Toggle>
-        <Toggle on={metricsPanelOpen} onClick={toggleMetricsPanel}>📊 Panel</Toggle>
+        <Brand
+          villageName={village.name}
+          count={village.components.length}
+          healthCounts={healthCounts}
+          alertCount={useStore.getState().alerts.length}
+          compact={compact}
+        />
+
+        {compact && (
+          <IconBtn
+            onClick={() => setMenuOpen((v) => !v)}
+            title={menuOpen ? 'Close menu' : 'Open menu'}
+            label={menuOpen ? '✕' : '☰'}
+            primary={menuOpen}
+          />
+        )}
+
+        {showGroups && (
+          <>
+            <Group>
+              <IconBtn
+                onClick={togglePause}
+                title={paused ? 'Resume animations (Space)' : 'Pause animations (Space)'}
+                label={paused ? '▶' : '⏸'}
+                primary={paused}
+              />
+              <IconBtn onClick={simulate} title="Replay flows on every edge" label="⚡" />
+              <IconBtn onClick={randomAlert} title="Spawn a random alert" label="⚠" />
+              <IconBtn onClick={() => setVillage(mockVillage)} title="Reload mock village" label="↺" />
+            </Group>
+
+            <Group>
+              <DataMenu
+                onJson={() => jsonRef.current?.click()}
+                onTf={() => tfRef.current?.click()}
+                onExport={exportFile}
+                compact={compact}
+              />
+              {compact ? (
+                <IconBtn onClick={() => setScanOpen(true)} title="Live cloud scan" label="☁" primary />
+              ) : (
+                <Btn onClick={() => setScanOpen(true)} accent title="Run a live cloud scan">☁ Live scan</Btn>
+              )}
+              <IconBtn onClick={() => setSettingsOpen(true)} title="Provider credentials" label="⚙" />
+            </Group>
+
+            <Group>
+              <SegmentedSwitch
+                options={[
+                  { value: '3d', label: '🏘 3D' },
+                  { value: '2d', label: '🗺 2D' },
+                ]}
+                value={viewMode}
+                onChange={(v) => v !== viewMode && toggleViewMode()}
+                title="Switch between 3D village and 2D architecture"
+              />
+              <PhasePill
+                phase={timePhase}
+                icon={PHASE_ICON[timePhase]}
+                onCycle={cyclePhase}
+                auto={autoCycle}
+                onToggleAuto={toggleAutoCycle}
+              />
+              <WeatherSelector
+                mode={weatherMode}
+                auto={weatherAuto}
+                onPick={setWeatherMode}
+                onToggleAuto={toggleWeatherAuto}
+              />
+            </Group>
+
+            <Group rightAlign={!compact}>
+              <Toggle on={metricsOn} onClick={() => setMetricsOn(!metricsOn)} title="Poll backend /api/metrics every 4s">
+                📈 {!compact && <span style={{ marginLeft: 4 }}>Live</span>}
+                {metricsOn && <LivePulse />}
+              </Toggle>
+              <Toggle on={metricsPanelOpen} onClick={toggleMetricsPanel} title="Toggle metrics dashboard panel">
+                📊 {!compact && <span style={{ marginLeft: 4 }}>Panel</span>}
+              </Toggle>
+            </Group>
+          </>
+        )}
+
         <input ref={jsonRef} type="file" accept="application/json" style={{ display: 'none' }} onChange={onJsonFile} />
         <input ref={tfRef} type="file" accept="application/json,.tfstate" style={{ display: 'none' }} onChange={onTfFile} />
       </div>
@@ -184,6 +263,16 @@ export function ControlBar() {
       {settingsOpen && <SettingsModal onClose={() => setSettingsOpen(false)} />}
     </>
   );
+}
+
+function countHealth(components: VillageConfig['components']) {
+  let healthy = 0, degraded = 0, down = 0;
+  for (const c of components) {
+    if (c.health === 'healthy') healthy++;
+    else if (c.health === 'degraded') degraded++;
+    else if (c.health === 'down') down++;
+  }
+  return { healthy, degraded, down };
 }
 
 function ScanModal({
@@ -416,18 +505,106 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-function Btn({ onClick, children }: { onClick: () => void; children: React.ReactNode }) {
+function Btn({
+  onClick,
+  children,
+  accent,
+  title,
+}: {
+  onClick: () => void;
+  children: React.ReactNode;
+  accent?: boolean;
+  title?: string;
+}) {
   return (
     <button
       onClick={onClick}
+      title={title}
       style={{
-        background: '#1f2a44',
-        border: '1px solid #2a3a5a',
+        background: accent ? 'linear-gradient(180deg,#5ec8ff,#3aa5e0)' : '#1a2540',
+        border: `1px solid ${accent ? '#5ec8ff' : '#2a3a5a'}`,
+        color: accent ? '#0b1220' : '#e6edf3',
+        padding: '6px 11px',
+        borderRadius: 7,
+        cursor: 'pointer',
+        fontSize: 12,
+        fontWeight: accent ? 600 : 500,
+        boxShadow: accent ? '0 1px 0 rgba(255,255,255,0.12) inset, 0 2px 6px rgba(94,200,255,0.25)' : 'none',
+        transition: 'background 0.15s, border-color 0.15s',
+        lineHeight: 1.2,
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
+function IconBtn({
+  onClick,
+  label,
+  title,
+  primary,
+}: {
+  onClick: () => void;
+  label: string;
+  title: string;
+  primary?: boolean;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      title={title}
+      aria-label={title}
+      style={{
+        background: primary ? '#2a3a5a' : '#1a2540',
+        border: `1px solid ${primary ? '#5ec8ff' : '#2a3a5a'}`,
         color: '#e6edf3',
-        padding: '5px 9px',
-        borderRadius: 6,
+        width: 30,
+        height: 28,
+        borderRadius: 7,
+        cursor: 'pointer',
+        fontSize: 13,
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        lineHeight: 1,
+        padding: 0,
+      }}
+    >
+      {label}
+    </button>
+  );
+}
+
+function Toggle({
+  on,
+  onClick,
+  children,
+  title,
+}: {
+  on: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+  title?: string;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      title={title}
+      style={{
+        background: on ? 'linear-gradient(180deg,#5ec8ff,#3aa5e0)' : '#1a2540',
+        color: on ? '#0b1220' : '#e6edf3',
+        border: `1px solid ${on ? '#5ec8ff' : '#2a3a5a'}`,
+        padding: '6px 11px',
+        borderRadius: 7,
         cursor: 'pointer',
         fontSize: 12,
+        fontWeight: on ? 600 : 500,
+        boxShadow: on ? '0 1px 0 rgba(255,255,255,0.12) inset, 0 0 0 1px rgba(94,200,255,0.15)' : 'none',
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 4,
+        lineHeight: 1.2,
       }}
     >
       {children}
@@ -435,41 +612,370 @@ function Btn({ onClick, children }: { onClick: () => void; children: React.React
   );
 }
 
-function Toggle({ on, onClick, children }: { on: boolean; onClick: () => void; children: React.ReactNode }) {
+function Group({ children, rightAlign }: { children: React.ReactNode; rightAlign?: boolean }) {
+  return (
+    <div
+      style={{
+        display: 'inline-flex',
+        gap: 4,
+        alignItems: 'center',
+        padding: '3px 6px',
+        background: 'rgba(11,18,32,0.45)',
+        borderRadius: 9,
+        border: '1px solid rgba(42,58,90,0.5)',
+        marginLeft: rightAlign ? 'auto' : 0,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+function SegmentedSwitch<T extends string>({
+  options,
+  value,
+  onChange,
+  title,
+}: {
+  options: Array<{ value: T; label: string }>;
+  value: T;
+  onChange: (v: T) => void;
+  title?: string;
+}) {
+  return (
+    <div
+      title={title}
+      style={{
+        display: 'inline-flex',
+        background: '#0e1729',
+        border: '1px solid #2a3a5a',
+        borderRadius: 7,
+        padding: 2,
+        gap: 2,
+      }}
+    >
+      {options.map((opt) => {
+        const active = opt.value === value;
+        return (
+          <button
+            key={opt.value}
+            onClick={() => onChange(opt.value)}
+            style={{
+              background: active ? 'linear-gradient(180deg,#5ec8ff,#3aa5e0)' : 'transparent',
+              color: active ? '#0b1220' : '#9aa0a6',
+              border: 'none',
+              padding: '3px 9px',
+              borderRadius: 5,
+              cursor: 'pointer',
+              fontSize: 11,
+              fontWeight: active ? 600 : 500,
+              lineHeight: 1.3,
+            }}
+          >
+            {opt.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+const PHASE_LABEL: Record<TimePhase, string> = {
+  dawn: 'Dawn',
+  day: 'Day',
+  dusk: 'Dusk',
+  night: 'Night',
+};
+
+function PhasePill({
+  phase,
+  icon,
+  onCycle,
+  auto,
+  onToggleAuto,
+}: {
+  phase: TimePhase;
+  icon: string;
+  onCycle: () => void;
+  auto: boolean;
+  onToggleAuto: () => void;
+}) {
+  return (
+    <span style={{ display: 'inline-flex', gap: 2 }}>
+      <button
+        onClick={onCycle}
+        title={`Time of day: ${PHASE_LABEL[phase]}. Click to cycle.`}
+        style={{
+          background: '#1a2540',
+          color: '#e6edf3',
+          border: '1px solid #2a3a5a',
+          padding: '6px 10px',
+          borderRadius: '7px 0 0 7px',
+          cursor: 'pointer',
+          fontSize: 12,
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 5,
+          lineHeight: 1.2,
+        }}
+      >
+        <span style={{ fontSize: 13, lineHeight: 1 }}>{icon}</span>
+        <span>{PHASE_LABEL[phase]}</span>
+      </button>
+      <button
+        onClick={onToggleAuto}
+        title={auto ? 'Auto-cycle every 12s. Click to stop.' : 'Manual time-of-day. Click for auto-cycle.'}
+        style={{
+          background: auto ? 'linear-gradient(180deg,#5ec8ff,#3aa5e0)' : '#1a2540',
+          color: auto ? '#0b1220' : '#9aa0a6',
+          border: '1px solid #2a3a5a',
+          borderLeft: 'none',
+          padding: '6px 8px',
+          borderRadius: '0 7px 7px 0',
+          cursor: 'pointer',
+          fontSize: 11,
+          fontWeight: auto ? 600 : 500,
+          lineHeight: 1.2,
+        }}
+      >
+        ⟳
+      </button>
+    </span>
+  );
+}
+
+function DataMenu({
+  onJson,
+  onTf,
+  onExport,
+  compact,
+}: {
+  onJson: () => void;
+  onTf: () => void;
+  onExport: () => void;
+  compact?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e: MouseEvent) => {
+      if (!ref.current?.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', onDoc);
+    return () => document.removeEventListener('mousedown', onDoc);
+  }, [open]);
+
+  return (
+    <div ref={ref} style={{ position: 'relative' }}>
+      <Btn onClick={() => setOpen((v) => !v)} title="Import / export village data">
+        ⤓{!compact && <> Data</>} <span style={{ marginLeft: 2, opacity: 0.7 }}>▾</span>
+      </Btn>
+      {open && (
+        <div
+          style={{
+            position: 'absolute',
+            top: '100%',
+            left: 0,
+            marginTop: 6,
+            minWidth: 200,
+            background: '#0b1220',
+            border: '1px solid #1f2a44',
+            borderRadius: 8,
+            padding: 4,
+            boxShadow: '0 8px 22px rgba(0,0,0,0.4)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 2,
+            zIndex: 20,
+          }}
+        >
+          <MenuItem
+            icon="📂"
+            label="Load JSON"
+            hint="Upload VillageConfig.json"
+            onClick={() => {
+              setOpen(false);
+              onJson();
+            }}
+          />
+          <MenuItem
+            icon="🧱"
+            label="Load Terraform state"
+            hint="Upload terraform.tfstate"
+            onClick={() => {
+              setOpen(false);
+              onTf();
+            }}
+          />
+          <div style={{ height: 1, background: '#1f2a44', margin: '2px 0' }} />
+          <MenuItem
+            icon="⬇"
+            label="Export village"
+            hint="Download current as JSON"
+            onClick={() => {
+              setOpen(false);
+              onExport();
+            }}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MenuItem({ icon, label, hint, onClick }: { icon: string; label: string; hint?: string; onClick: () => void }) {
   return (
     <button
       onClick={onClick}
       style={{
-        background: on ? '#5ec8ff' : '#1f2a44',
-        color: on ? '#0b1220' : '#e6edf3',
-        border: '1px solid #2a3a5a',
-        padding: '5px 9px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+        background: 'transparent',
+        border: 'none',
+        color: '#e6edf3',
+        padding: '8px 10px',
         borderRadius: 6,
         cursor: 'pointer',
         fontSize: 12,
-        fontWeight: on ? 600 : 400,
+        textAlign: 'left',
+        width: '100%',
       }}
+      onMouseEnter={(e) => (e.currentTarget.style.background = '#1f2a44')}
+      onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
     >
-      {children}
+      <span style={{ fontSize: 14, width: 18, textAlign: 'center' }}>{icon}</span>
+      <span style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.2 }}>
+        <span>{label}</span>
+        {hint && <span style={{ fontSize: 10, color: '#9aa0a6', marginTop: 2 }}>{hint}</span>}
+      </span>
     </button>
   );
 }
 
-function Sep() {
-  return <span style={{ width: 1, height: 18, background: '#1f2a44' }} />;
+function LivePulse() {
+  return (
+    <span
+      style={{
+        marginLeft: 6,
+        width: 7,
+        height: 7,
+        borderRadius: '50%',
+        background: '#0b1220',
+        animation: 'vk-live-pulse 1.6s ease-in-out infinite',
+        display: 'inline-block',
+      }}
+    >
+      <style>{`@keyframes vk-live-pulse {
+        0%,100% { box-shadow: 0 0 0 0 rgba(11,18,32,0.6); opacity: 1; }
+        50%     { box-shadow: 0 0 0 4px rgba(11,18,32,0); opacity: 0.5; }
+      }`}</style>
+    </span>
+  );
 }
 
-function Brand({ villageName, count }: { villageName: string; count: number }) {
+const WEATHER_ICON: Record<WeatherMode, string> = {
+  clear:  '☀',
+  cloudy: '☁',
+  rain:   '🌧',
+  storm:  '⛈',
+};
+
+const WEATHER_LABEL: Record<WeatherMode, string> = {
+  clear:  'Clear',
+  cloudy: 'Cloudy',
+  rain:   'Rain',
+  storm:  'Storm',
+};
+
+const WEATHER_ORDER: WeatherMode[] = ['clear', 'cloudy', 'rain', 'storm'];
+
+function WeatherSelector({
+  mode,
+  auto,
+  onPick,
+  onToggleAuto,
+}: {
+  mode: WeatherMode;
+  auto: boolean;
+  onPick: (m: WeatherMode) => void;
+  onToggleAuto: () => void;
+}) {
+  const cycle = () => {
+    const i = WEATHER_ORDER.indexOf(mode);
+    onPick(WEATHER_ORDER[(i + 1) % WEATHER_ORDER.length]);
+  };
+  return (
+    <span style={{ display: 'inline-flex', gap: 4 }}>
+      <button
+        onClick={cycle}
+        title={
+          auto
+            ? `Auto weather (derived from fleet health). Click to override → ${WEATHER_LABEL[mode]}`
+            : `Manual weather: ${WEATHER_LABEL[mode]}. Click to cycle`
+        }
+        style={{
+          background: '#1f2a44',
+          border: `1px solid ${auto ? '#2a3a5a' : '#5ec8ff'}`,
+          color: '#e6edf3',
+          padding: '5px 9px',
+          borderRadius: 6,
+          cursor: 'pointer',
+          fontSize: 12,
+          display: 'inline-flex',
+          gap: 5,
+          alignItems: 'center',
+        }}
+      >
+        <span style={{ fontSize: 13, lineHeight: 1 }}>{WEATHER_ICON[mode]}</span>
+        <span>{WEATHER_LABEL[mode]}</span>
+      </button>
+      <button
+        onClick={onToggleAuto}
+        title={auto ? 'Weather auto-derives from health/alerts. Click to lock manual.' : 'Weather manually set. Click to resume auto.'}
+        style={{
+          background: auto ? '#5ec8ff' : '#1f2a44',
+          color: auto ? '#0b1220' : '#9aa0a6',
+          border: '1px solid #2a3a5a',
+          padding: '5px 8px',
+          borderRadius: 6,
+          cursor: 'pointer',
+          fontSize: 11,
+          fontWeight: auto ? 600 : 400,
+        }}
+      >
+        ⟳ Auto
+      </button>
+    </span>
+  );
+}
+
+function Brand({
+  villageName,
+  count,
+  healthCounts,
+  alertCount,
+  compact,
+}: {
+  villageName: string;
+  count: number;
+  healthCounts: { healthy: number; degraded: number; down: number };
+  alertCount: number;
+  compact?: boolean;
+}) {
   return (
     <div
       style={{
         display: 'flex',
         flexDirection: 'column',
-        lineHeight: 1.1,
+        lineHeight: 1.15,
         minWidth: 0,
-        padding: '2px 6px',
-        marginRight: 2,
+        padding: '2px 10px 2px 6px',
+        marginRight: 4,
       }}
+      title={`${count} components · ${healthCounts.healthy} healthy · ${healthCounts.degraded} degraded · ${healthCounts.down} down · ${alertCount} active alert${alertCount === 1 ? '' : 's'}`}
     >
       <strong
         style={{
@@ -480,6 +986,10 @@ function Brand({ villageName, count }: { villageName: string; count: number }) {
           WebkitTextFillColor: 'transparent',
           backgroundClip: 'text',
           fontWeight: 700,
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          maxWidth: 220,
         }}
       >
         {villageName}
@@ -490,28 +1000,60 @@ function Brand({ villageName, count }: { villageName: string; count: number }) {
           color: '#9aa0a6',
           display: 'flex',
           alignItems: 'center',
-          gap: 5,
-          overflow: 'hidden',
-          whiteSpace: 'nowrap',
-          textOverflow: 'ellipsis',
-          maxWidth: 220,
+          gap: 6,
+          marginTop: 2,
         }}
-        title={`${count} components`}
       >
-        <span
-          style={{
-            display: 'inline-block',
-            width: 6,
-            height: 6,
-            borderRadius: '50%',
-            background: '#7ee787',
-            boxShadow: '0 0 6px #7ee787',
-            flexShrink: 0,
-          }}
-        />
-        {/* <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{villageName}</span> */}
-        <span style={{ color: '#7a8090' }}>{count} components</span>
+        <span style={{ color: '#7a8090' }}>{count} comp</span>
+        {!compact && (
+          <>
+            <span style={{ color: '#1f2a44' }}>│</span>
+            <HealthChip color="#22c55e" count={healthCounts.healthy} title="Healthy" />
+            <HealthChip color="#f59e0b" count={healthCounts.degraded} title="Degraded" />
+            <HealthChip color="#ef4444" count={healthCounts.down} title="Down" />
+          </>
+        )}
+        {compact && healthCounts.down > 0 && <HealthChip color="#ef4444" count={healthCounts.down} title="Down" />}
+        {compact && healthCounts.down === 0 && healthCounts.degraded > 0 && (
+          <HealthChip color="#f59e0b" count={healthCounts.degraded} title="Degraded" />
+        )}
+        {alertCount > 0 && (
+          <>
+            {!compact && <span style={{ color: '#1f2a44' }}>│</span>}
+            <span
+              title={`${alertCount} active alert${alertCount === 1 ? '' : 's'}`}
+              style={{
+                background: '#3a1f1f',
+                color: '#ffb4b4',
+                padding: '1px 6px',
+                borderRadius: 999,
+                fontSize: 10,
+                fontWeight: 600,
+              }}
+            >
+              ⚠ {alertCount}
+            </span>
+          </>
+        )}
       </span>
     </div>
+  );
+}
+
+function HealthChip({ color, count, title }: { color: string; count: number; title: string }) {
+  return (
+    <span title={`${title}: ${count}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+      <span
+        style={{
+          width: 6,
+          height: 6,
+          borderRadius: '50%',
+          background: color,
+          boxShadow: `0 0 5px ${color}`,
+          display: 'inline-block',
+        }}
+      />
+      <span style={{ color: count > 0 ? '#e6edf3' : '#5a6275', fontWeight: count > 0 ? 600 : 400 }}>{count}</span>
+    </span>
   );
 }

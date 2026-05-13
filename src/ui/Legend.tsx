@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useIsCompact } from '../hooks/useIsCompact';
 
 type BuildingItem = {
   kind: string;
@@ -34,22 +35,26 @@ const FLOWS: Array<{ label: string; color: string; description: string }> = [
 ];
 
 export function Legend() {
-  const [open, setOpen] = useState(true);
+  const compact = useIsCompact();
+  const [open, setOpen] = useState(!compact);
 
   return (
     <div
       style={{
         position: 'absolute',
-        bottom: 12,
-        left: 12,
+        bottom: compact ? 8 : 12,
+        left: compact ? 8 : 12,
         background: 'rgba(11,18,32,0.92)',
         border: '1px solid #1f2a44',
         borderRadius: 10,
         color: '#e6edf3',
         zIndex: 10,
-        width: open ? 320 : 'auto',
-        boxShadow: '0 4px 12px rgba(0,0,0,0.35)',
+        width: open ? (compact ? 260 : 320) : 'auto',
+        maxHeight: open && compact ? '55vh' : 'none',
         overflow: 'hidden',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.35)',
+        display: 'flex',
+        flexDirection: 'column',
       }}
     >
       <button
@@ -75,7 +80,7 @@ export function Legend() {
       </button>
 
       {open && (
-        <div style={{ padding: '4px 12px 12px' }}>
+        <div style={{ padding: '4px 12px 12px', overflowY: 'auto' }}>
           <Section title="Buildings">
             <div
               style={{

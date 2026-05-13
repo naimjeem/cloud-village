@@ -28,6 +28,7 @@ import { Building } from './Building';
 import { Roads } from './Roads';
 import { FlowParticles } from './FlowParticles';
 import { Props } from './Props';
+import { WeatherSystem } from './WeatherSystem';
 import { useStore, type TimePhase } from '../store';
 
 interface PhaseConfig {
@@ -250,7 +251,10 @@ export function Village() {
   const village = useStore((s) => s.village);
   const select = useStore((s) => s.select);
   const phase = useStore((s) => s.timePhase);
+  const weather = useStore((s) => s.weatherMode);
   const cfg = PHASE[phase];
+  const cloudOpacityMul = weather === 'storm' ? 2.0 : weather === 'rain' ? 1.6 : weather === 'cloudy' ? 1.3 : 1.0;
+  const cloudTint = weather === 'storm' ? '#3a4660' : weather === 'rain' ? '#6a7898' : weather === 'cloudy' ? '#a3b1c8' : null;
 
   const dirLightRef = useRef<THREE.DirectionalLight>(null);
   const hemiLightRef = useRef<THREE.HemisphereLight>(null);
@@ -343,33 +347,35 @@ export function Village() {
             seed={1}
             segments={28}
             volume={6}
-            opacity={phase === 'night' ? 0.18 : 0.45}
-            position={[-30, 22, -20]}
-            color={phase === 'night' ? '#9aaecf' : '#ffe9d2'}
+            opacity={Math.min(0.95, (phase === 'night' ? 0.18 : 0.45) * cloudOpacityMul)}
+            position={[-30, weather === 'clear' ? 22 : 18, -20]}
+            color={cloudTint ?? (phase === 'night' ? '#9aaecf' : '#ffe9d2')}
             bounds={[8, 1.5, 4]}
           />
           <Cloud
             seed={2}
             segments={22}
             volume={4}
-            opacity={phase === 'night' ? 0.15 : 0.4}
-            position={[30, 26, 10]}
-            color={phase === 'night' ? '#9aaecf' : '#ffe9d2'}
+            opacity={Math.min(0.95, (phase === 'night' ? 0.15 : 0.4) * cloudOpacityMul)}
+            position={[30, weather === 'clear' ? 26 : 20, 10]}
+            color={cloudTint ?? (phase === 'night' ? '#9aaecf' : '#ffe9d2')}
             bounds={[8, 1.5, 4]}
           />
           <Cloud
             seed={3}
             segments={18}
             volume={3}
-            opacity={phase === 'night' ? 0.12 : 0.35}
-            position={[5, 30, -35]}
-            color={phase === 'night' ? '#aab8d4' : '#fff2dd'}
+            opacity={Math.min(0.95, (phase === 'night' ? 0.12 : 0.35) * cloudOpacityMul)}
+            position={[5, weather === 'clear' ? 30 : 22, -35]}
+            color={cloudTint ?? (phase === 'night' ? '#aab8d4' : '#fff2dd')}
             bounds={[10, 2, 4]}
           />
         </Clouds>
       </Suspense>
 
       <FlowParticles />
+
+      <WeatherSystem dirLightRef={dirLightRef} fogRef={fogRef} />
 
       <OrbitControls
         target={[0, 1, 0]}

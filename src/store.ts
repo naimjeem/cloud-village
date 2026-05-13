@@ -19,6 +19,7 @@ function loadInitial(): VillageConfig {
 }
 
 export type TimePhase = 'dawn' | 'day' | 'dusk' | 'night';
+export type WeatherMode = 'clear' | 'cloudy' | 'rain' | 'storm';
 
 interface State {
   village: VillageConfig;
@@ -33,11 +34,15 @@ interface State {
   autoCycle: boolean; // smoothly animate phase
   metricsPanelOpen: boolean;
   viewMode: '3d' | '2d';
+  weatherMode: WeatherMode;
+  weatherAuto: boolean;
 
   setLastScanProvider: (p: State['lastScanProvider']) => void;
   toggleMetricsPanel: () => void;
   setViewMode: (m: State['viewMode']) => void;
   toggleViewMode: () => void;
+  setWeatherMode: (m: WeatherMode) => void;
+  toggleWeatherAuto: () => void;
   setVillage: (v: VillageConfig, persist?: boolean) => void;
   select: (id: string | null) => void;
   setSearch: (q: string) => void;
@@ -68,11 +73,15 @@ export const useStore = create<State>((set, get) => ({
   autoCycle: false,
   metricsPanelOpen: false,
   viewMode: '3d',
+  weatherMode: 'clear',
+  weatherAuto: true,
 
   setLastScanProvider: (p) => set({ lastScanProvider: p }),
   toggleMetricsPanel: () => set({ metricsPanelOpen: !get().metricsPanelOpen }),
   setViewMode: (m) => set({ viewMode: m }),
   toggleViewMode: () => set({ viewMode: get().viewMode === '3d' ? '2d' : '3d' }),
+  setWeatherMode: (m) => set({ weatherMode: m, weatherAuto: false }),
+  toggleWeatherAuto: () => set({ weatherAuto: !get().weatherAuto }),
 
   setVillage: (v, persist = true) => {
     set({ village: v, selectedId: null, alerts: [], flows: [], edgeTraffic: {} });
