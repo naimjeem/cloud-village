@@ -22,6 +22,38 @@ const KIND_COLOR: Record<VillageComponent['kind'], string> = {
   external:   '#cccccc',
 };
 
+const KIND_ICON: Record<VillageComponent['kind'], string> = {
+  compute:    '🏠',
+  storage:    '🛢',
+  database:   '🗄',
+  queue:      '📮',
+  gateway:    '🚪',
+  cdn:        '📡',
+  monitoring: '🔭',
+  auth:       '🛡',
+  cache:      '💧',
+  external:   '🚶',
+};
+
+const LABEL_MAX_CHARS = 22;
+
+// Strip common scanner prefixes + truncate; full name shown in tooltip.
+function prettyName(raw: string): string {
+  let s = raw;
+  for (const prefix of ['ctr_', 'vol_', 'svc_', 'fn_', 'tbl_', 'q_', 'lb_', 'arn:aws:']) {
+    if (s.startsWith(prefix)) {
+      s = s.slice(prefix.length);
+      break;
+    }
+  }
+  // collapse runs of underscores into single space, keep hyphens (identifier-friendly)
+  s = s.replace(/_+/g, ' ').trim();
+  if (s.length > LABEL_MAX_CHARS) {
+    s = s.slice(0, LABEL_MAX_CHARS - 1).trimEnd() + '…';
+  }
+  return s || raw;
+}
+
 const HEALTH_GLOW: Record<VillageComponent['health'], string> = {
   healthy:  '#22c55e',
   degraded: '#f59e0b',
@@ -145,10 +177,14 @@ export function Building({ component }: Props) {
 
       <Html position={[0, 3.6, 0]} center distanceFactor={14} occlude={false}>
         <div
+          title={`${component.name}\n${component.kind} · ${component.provider} · ${component.health}`}
           style={{
-            background: 'rgba(11,18,32,0.85)',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+            background: 'rgba(11,18,32,0.88)',
             color: '#e6edf3',
-            padding: '3px 10px',
+            padding: '3px 10px 3px 7px',
             borderRadius: 999,
             fontSize: 11,
             whiteSpace: 'nowrap',
@@ -157,9 +193,26 @@ export function Building({ component }: Props) {
             boxShadow: '0 2px 10px rgba(0,0,0,0.3)',
             fontWeight: 500,
             letterSpacing: 0.2,
+            maxWidth: 220,
           }}
         >
-          {component.name}
+          <span
+            style={{
+              width: 7,
+              height: 7,
+              borderRadius: '50%',
+              background: healthColor,
+              boxShadow: `0 0 5px ${healthColor}`,
+              flexShrink: 0,
+            }}
+            aria-label={component.health}
+          />
+          <span style={{ fontSize: 12, lineHeight: 1 }} aria-hidden>
+            {KIND_ICON[component.kind]}
+          </span>
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {prettyName(component.name)}
+          </span>
         </div>
       </Html>
     </group>
