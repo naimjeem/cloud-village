@@ -8,6 +8,8 @@
 
 ![Cloud Village intro](docs/cloud-village.png)
 
+![Cloud Village 2d](docs/cloud-village-2d.png)
+
 > 📽 [Full 1080p MP4](docs/cloud-village-intro.mp4) · [Static poster](docs/cloud-village.png)
 
 ---
