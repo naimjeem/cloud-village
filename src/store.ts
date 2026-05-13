@@ -32,9 +32,12 @@ interface State {
   timePhase: TimePhase;
   autoCycle: boolean; // smoothly animate phase
   metricsPanelOpen: boolean;
+  viewMode: '3d' | '2d';
 
   setLastScanProvider: (p: State['lastScanProvider']) => void;
   toggleMetricsPanel: () => void;
+  setViewMode: (m: State['viewMode']) => void;
+  toggleViewMode: () => void;
   setVillage: (v: VillageConfig, persist?: boolean) => void;
   select: (id: string | null) => void;
   setSearch: (q: string) => void;
@@ -64,9 +67,12 @@ export const useStore = create<State>((set, get) => ({
   timePhase: 'day',
   autoCycle: false,
   metricsPanelOpen: false,
+  viewMode: '3d',
 
   setLastScanProvider: (p) => set({ lastScanProvider: p }),
   toggleMetricsPanel: () => set({ metricsPanelOpen: !get().metricsPanelOpen }),
+  setViewMode: (m) => set({ viewMode: m }),
+  toggleViewMode: () => set({ viewMode: get().viewMode === '3d' ? '2d' : '3d' }),
 
   setVillage: (v, persist = true) => {
     set({ village: v, selectedId: null, alerts: [], flows: [], edgeTraffic: {} });

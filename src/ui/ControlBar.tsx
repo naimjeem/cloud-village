@@ -26,6 +26,8 @@ export function ControlBar() {
   useMetricsPolling(metricsOn);
   const metricsPanelOpen = useStore((s) => s.metricsPanelOpen);
   const toggleMetricsPanel = useStore((s) => s.toggleMetricsPanel);
+  const viewMode = useStore((s) => s.viewMode);
+  const toggleViewMode = useStore((s) => s.toggleViewMode);
 
   const timePhase = useStore((s) => s.timePhase);
   const cyclePhase = useStore((s) => s.cyclePhase);
@@ -172,6 +174,7 @@ export function ControlBar() {
         <Btn onClick={cyclePhase}>{PHASE_ICON[timePhase]} {timePhase}</Btn>
         <Toggle on={autoCycle} onClick={toggleAutoCycle}>⟳ Auto</Toggle>
         <Sep />
+        <Btn onClick={toggleViewMode}>{viewMode === '3d' ? '🗺 2D view' : '🏘 3D view'}</Btn>
         <Toggle on={metricsOn} onClick={() => setMetricsOn(!metricsOn)}>📈 Live metrics</Toggle>
         <Toggle on={metricsPanelOpen} onClick={toggleMetricsPanel}>📊 Panel</Toggle>
         <input ref={jsonRef} type="file" accept="application/json" style={{ display: 'none' }} onChange={onJsonFile} />
